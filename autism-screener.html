@@ -28,9 +28,8 @@
       padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer;
       font-size: 16px;
     }
-    .primary { background: #8FA6C9; color: #fff; }
-    .primary:hover {
-  background: #7E95B8; /* slightly darker blue */
+    .primary { background: #7A93BD; color: #fff; }
+    .primary:hover {  background: #667EA8; /* slightly darker blue */
 }
     .ghost { background: #f1f1f1; }
     .hidden { display: none; }
@@ -92,6 +91,7 @@
         <p style="margin:0 0 8px;"><strong>Get your results + next steps by email</strong></p>
         <div class="row">
           <input type="email" id="email" placeholder="you@email.com" />
+          <input type="text" id="zip" placeholder="ZIP code (optional)" maxlength="5">
           <button class="primary" id="btnSubmitLead" type="button">Submit</button>
         </div>
         <p class="muted" id="leadNote">We’ll save your email + screener summary so Sunpetal can follow up with helpful next steps.</p>
@@ -515,3 +515,4 @@
   </script>
 </body>
 </html>
+
