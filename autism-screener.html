@@ -22,7 +22,7 @@
       cursor: pointer; user-select: none; background: #fff;
     }
     .choice input { margin-right: 6px; }
-    .btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
     button {
       padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer;
       font-size: 16px;
@@ -39,7 +39,11 @@
     .next { margin: 0; line-height: 1.45; }
     .small { font-size: 13px; color: #555; margin-top: 10px; }
     .error { color: #b00020; margin-top: 10px; font-size: 14px; }
+    .ok { color: #0b6b2e; margin-top: 10px; font-size: 14px; }
     a { color: inherit; }
+    .muted { color: #666; font-size: 13px; margin-top: 8px; }
+    .spinner { display:inline-block; width: 14px; height: 14px; border: 2px solid #ccc; border-top-color:#111; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -66,33 +70,41 @@
       <div id="questions" class="hidden" style="margin-top:14px;"></div>
 
       <div class="btns hidden" id="actions">
-        <button class="primary" id="btnScore">See results</button>
+        <button class="primary" id="btnScore" type="button">See results</button>
         <button class="ghost" id="btnReset" type="button">Reset</button>
       </div>
 
       <div id="err" class="error hidden"></div>
+      <div id="ok" class="ok hidden"></div>
 
       <div id="result" class="result hidden" aria-live="polite"></div>
 
+      <!-- Lead capture -->
       <div id="leadCapture" class="hidden" style="margin-top:14px;">
-        <p style="margin:0 0 8px;"><strong>Optional:</strong> Get a copy of your results + next steps by email.</p>
+        <p style="margin:0 0 8px;"><strong>Get your results + next steps by email</strong></p>
         <div class="row">
           <input type="email" id="email" placeholder="you@email.com" />
-          <button class="ghost" id="btnEmail" type="button">Send me my results</button>
+          <button class="primary" id="btnSubmitLead" type="button">Save my results</button>
         </div>
-        <p class="small">
-          (This demo stores nothing. You’ll connect this to your form/CRM in the next step.)
-        </p>
+        <p class="muted" id="leadNote">We’ll save your email + screener summary so Sunpetal can follow up with helpful next steps.</p>
       </div>
     </div>
   </div>
 
   <script>
-    // Each question has:
-    // - id: used as key in answers
-    // - text: display
-    // - concernAnswer: which choice counts as a concern (adds 1 point)
-    // Keep these as "yes" or "no" to make scoring easy.
+    /**********************************************************************
+     * CONFIG
+     **********************************************************************/
+    const APPS_SCRIPT_ENDPOINT =
+      "https://script.google.com/macros/s/AKfycbwdc6XHdaEwHPl2RiPCXCKg5CjJ_dEREEaRQK7XSXv1ZVGboxTngvkA7GiVaF_xORDZ/exec";
+
+    // If you want to require email before showing results, set to true.
+    // (Right now results show first, then email capture.)
+    const REQUIRE_EMAIL_BEFORE_RESULTS = false;
+
+    /**********************************************************************
+     * QUESTIONS
+     **********************************************************************/
     const QUESTION_BANK = {
       "0_18": [
         { id: "name_response", text: "Does your child respond to their name most of the time?", concernAnswer: "no" },
@@ -124,30 +136,55 @@
         { id: "social_cues", text: "Does your child often miss social cues (tone, facial expressions, sarcasm)?", concernAnswer: "yes" },
         { id: "rigidity", text: "Does your child have strong rigidity about routines or rules?", concernAnswer: "yes" },
         { id: "sensory", text: "Does your child have significant sensory sensitivities (sound, clothing, food)?", concernAnswer: "yes" },
-        { id: "repetitive", text: "Do you see repetitive movements or repetitive speech (echolalia/phrases)?", concernAnswer: "yes" },
+        { id: "repetitive", text: "Do you see repetitive movements or repetitive speech (repeating phrases or scripts)?", concernAnswer: "yes" },
       ]
     };
 
-    // Result thresholds (tune these later)
+    /**********************************************************************
+     * SCORING
+     **********************************************************************/
     function interpretScore(score, total) {
-      // Simple: 0-2 low, 3-4 moderate, 5+ high (for 6 questions)
-      // If you change question counts, this scales with %.
       const pct = total ? (score / total) : 0;
       if (pct <= 0.33) return "low";
       if (pct <= 0.66) return "moderate";
       return "high";
     }
 
+    function friendlyAgeLabel(key) {
+      switch (key) {
+        case "0_18": return "0–18 months";
+        case "18_36": return "18–36 months";
+        case "3_5": return "3–5 years";
+        case "6_10": return "6–10 years";
+        default: return key || "";
+      }
+    }
+
+    /**********************************************************************
+     * ELEMENTS / STATE
+     **********************************************************************/
     const ageGroupEl = document.getElementById("ageGroup");
     const questionsEl = document.getElementById("questions");
     const actionsEl = document.getElementById("actions");
     const resultEl = document.getElementById("result");
     const errEl = document.getElementById("err");
+    const okEl = document.getElementById("ok");
     const leadEl = document.getElementById("leadCapture");
+    const emailEl = document.getElementById("email");
+    const btnScore = document.getElementById("btnScore");
+    const btnReset = document.getElementById("btnReset");
+    const btnSubmitLead = document.getElementById("btnSubmitLead");
 
     let currentQuestions = [];
     let answers = {}; // {questionId: "yes"|"no"}
 
+    // This is what we will POST to Apps Script (plus email).
+    // Set when user clicks "See results".
+    let lastResult = null;
+
+    /**********************************************************************
+     * EVENTS
+     **********************************************************************/
     ageGroupEl.addEventListener("change", () => {
       const key = ageGroupEl.value;
       resetUI(false);
@@ -161,40 +198,99 @@
       actionsEl.classList.remove("hidden");
     });
 
-    document.getElementById("btnReset").addEventListener("click", () => {
+    btnReset.addEventListener("click", () => {
       ageGroupEl.value = "";
       resetUI(true);
     });
 
-    document.getElementById("btnScore").addEventListener("click", () => {
-      errEl.classList.add("hidden");
-      errEl.textContent = "";
+    btnScore.addEventListener("click", () => {
+      clearMessages();
 
       // Validate all answered
       const missing = currentQuestions.filter(q => !answers[q.id]);
       if (missing.length) {
-        errEl.textContent = "Please answer every question to see results.";
-        errEl.classList.remove("hidden");
+        showError("Please answer every question to see results.");
         return;
       }
 
       const { score, total } = computeScore(currentQuestions, answers);
       const bucket = interpretScore(score, total);
-      showResult(bucket, score, total);
-      leadEl.classList.remove("hidden");
-    });
 
-    document.getElementById("btnEmail").addEventListener("click", () => {
-      const email = document.getElementById("email").value.trim();
-      if (!email) {
-        alert("Enter an email address.");
+      // Save result snapshot (no email yet)
+      lastResult = buildResultPayload({ score, total, bucket });
+
+      if (REQUIRE_EMAIL_BEFORE_RESULTS) {
+        // Show lead capture first, then show results after save
+        leadEl.classList.remove("hidden");
+        showOk("Enter your email to view results.");
+        resultEl.classList.add("hidden");
+        resultEl.innerHTML = "";
+        leadEl.scrollIntoView({ behavior: "smooth", block: "start" });
         return;
       }
-      // Placeholder: connect to your backend, Mailchimp, HubSpot, etc.
-      // For now just show what you would send.
-      alert("Demo: would send results to " + email);
+
+      showResult(bucket, score, total);
+      leadEl.classList.remove("hidden");
+      leadEl.scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
+    btnSubmitLead.addEventListener("click", async () => {
+      clearMessages();
+
+      const email = emailEl.value.trim();
+      if (!email) {
+        showError("Please enter an email address.");
+        return;
+      }
+      if (!isValidEmail(email)) {
+        showError("That email address doesn’t look valid. Please double-check it.");
+        return;
+      }
+      if (!lastResult) {
+        showError("Please complete the screener first.");
+        return;
+      }
+
+      setLeadSubmitting(true);
+
+      const payload = { ...lastResult, email };
+
+      try {
+        const res = await fetch(APPS_SCRIPT_ENDPOINT, {
+          method: "POST",
+          // Apps Script is often happiest receiving text/plain to avoid CORS/content-type issues
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+        });
+
+        // Some Apps Script deployments return JSON, others return text. Handle both.
+        const text = await res.text();
+        let json = null;
+        try { json = JSON.parse(text); } catch (_) {}
+
+        if (json && json.ok) {
+          showOk("Saved — thanks! We received your email + results.");
+          setLeadSubmittedUI();
+
+          // If you gated results behind email, show results now
+          if (REQUIRE_EMAIL_BEFORE_RESULTS) {
+            showResult(lastResult.bucket, lastResult.score, lastResult.total);
+          }
+        } else {
+          // If it didn't parse or ok wasn't true, still surface the response
+          const msg = (json && json.error) ? json.error : text || "Unknown error";
+          showError("Save failed: " + msg);
+        }
+      } catch (err) {
+        showError("Network error saving your results: " + String(err));
+      } finally {
+        setLeadSubmitting(false);
+      }
+    });
+
+    /**********************************************************************
+     * RENDERING
+     **********************************************************************/
     function renderQuestions(list) {
       questionsEl.innerHTML = "";
       list.forEach((q, idx) => {
@@ -208,9 +304,7 @@
         const choices = document.createElement("div");
         choices.className = "choices";
 
-        // Yes option
         choices.appendChild(makeChoice(q.id, "yes", "Yes"));
-        // No option
         choices.appendChild(makeChoice(q.id, "no", "No"));
 
         div.appendChild(title);
@@ -222,6 +316,7 @@
     function makeChoice(qid, value, label) {
       const wrap = document.createElement("label");
       wrap.className = "choice";
+
       const input = document.createElement("input");
       input.type = "radio";
       input.name = qid;
@@ -235,6 +330,50 @@
       return wrap;
     }
 
+    function showResult(bucket, score, total) {
+      const badgeText =
+        bucket === "low" ? "Low concern" :
+        bucket === "moderate" ? "Moderate concern" :
+        "Higher concern";
+
+      const headline =
+        bucket === "low"
+          ? "Your responses suggest low concern based on this brief screener."
+          : bucket === "moderate"
+            ? "Your responses suggest some areas worth monitoring or discussing."
+            : "Your responses suggest it may be helpful to talk with a professional soon.";
+
+      const nextSteps =
+        bucket === "low"
+          ? "Consider monitoring development over time. If concerns increase, talk with your pediatrician or a specialist."
+          : bucket === "moderate"
+            ? "Consider a professional screening or consultation. Early support can make a big difference."
+            : "Consider scheduling a developmental evaluation or speaking with a qualified clinician.";
+
+      // TODO: Replace /contact with your real intake or bookings link on Sunpetal
+      const cta =
+        bucket === "high"
+          ? `<p class="next"><strong>Next step:</strong> <a href="/contact">Request an evaluation or contact Sunpetal</a>.</p>`
+          : `<p class="next"><strong>Next step:</strong> <a href="/contact">Ask a question or request next steps</a>.</p>`;
+
+      const ageKey = ageGroupEl.value;
+      resultEl.innerHTML = `
+        <span class="badge">${badgeText}</span>
+        <h2>${headline}</h2>
+        <p class="next">${nextSteps}</p>
+        <p class="small"><strong>Age group:</strong> ${escapeHtml(friendlyAgeLabel(ageKey))}</p>
+        <p class="small"><strong>Score:</strong> ${score} / ${total} (for your reference)</p>
+        ${cta}
+        <p class="small">Reminder: This is not a diagnosis.</p>
+      `;
+
+      resultEl.classList.remove("hidden");
+      resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    /**********************************************************************
+     * COMPUTE + PAYLOAD
+     **********************************************************************/
     function computeScore(qs, ans) {
       let score = 0;
       qs.forEach(q => {
@@ -243,53 +382,99 @@
       return { score, total: qs.length };
     }
 
-    function showResult(bucket, score, total) {
-      const badgeText = bucket === "low" ? "Low concern"
-                      : bucket === "moderate" ? "Moderate concern"
-                      : "Higher concern";
+    function buildResultPayload({ score, total, bucket }) {
+      return {
+        // Core fields (match your Apps Script columns)
+        ageGroup: ageGroupEl.value || "",
+        ageGroupLabel: friendlyAgeLabel(ageGroupEl.value || ""),
+        score,
+        total,
+        bucket,
 
-      const headline = bucket === "low"
-        ? "Your responses suggest low concern based on this brief screener."
-        : bucket === "moderate"
-          ? "Your responses suggest some areas worth monitoring or discussing."
-          : "Your responses suggest it may be helpful to talk with a professional soon.";
+        // Helpful metadata
+        page: window.location.href,
+        userAgent: navigator.userAgent,
+        timestampISO: new Date().toISOString(),
 
-      // Replace these with Sunpetal links (Bookings, intake page, phone)
-      const nextSteps = bucket === "low"
-        ? `Consider tracking development over time. If concerns grow, talk with your pediatrician or a specialist.`
-        : bucket === "moderate"
-          ? `Consider a professional screening or consultation. Early support can make a big difference.`
-          : `Consider scheduling a developmental evaluation or speaking with a qualified clinician.`;
-
-      const cta = bucket === "high"
-        ? `<p class="next"><strong>Next step:</strong> <a href="/contact">Request an evaluation or call Sunpetal</a>.</p>`
-        : `<p class="next"><strong>Next step:</strong> <a href="/contact">Ask a question or request next steps</a>.</p>`;
-
-      resultEl.innerHTML = `
-        <span class="badge">${badgeText}</span>
-        <h2>${headline}</h2>
-        <p class="next">${nextSteps}</p>
-        <p class="small">Score: ${score} / ${total} (for your reference)</p>
-        ${cta}
-        <p class="small">Reminder: This is not a diagnosis.</p>
-      `;
-      resultEl.classList.remove("hidden");
-      resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Optional: store the raw answers (useful later)
+        // Comment out if you don't want to store answers.
+        answers: { ...answers }
+      };
     }
 
-    function resetUI(full) {
+    /**********************************************************************
+     * UI HELPERS
+     **********************************************************************/
+    function resetUI(scrollTop) {
       currentQuestions = [];
       answers = {};
+      lastResult = null;
+
       questionsEl.innerHTML = "";
       questionsEl.classList.add("hidden");
       actionsEl.classList.add("hidden");
+
       resultEl.classList.add("hidden");
       resultEl.innerHTML = "";
+
       leadEl.classList.add("hidden");
-      document.getElementById("email").value = "";
+      emailEl.value = "";
+
+      clearMessages();
+      setLeadSubmitting(false);
+      btnSubmitLead.disabled = false;
+      btnSubmitLead.textContent = "Save my results";
+
+      if (scrollTop) window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function clearMessages() {
       errEl.classList.add("hidden");
       errEl.textContent = "";
-      if (full) window.scrollTo({ top: 0, behavior: "smooth" });
+      okEl.classList.add("hidden");
+      okEl.textContent = "";
+    }
+
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.classList.remove("hidden");
+    }
+
+    function showOk(msg) {
+      okEl.textContent = msg;
+      okEl.classList.remove("hidden");
+    }
+
+    function setLeadSubmitting(isSubmitting) {
+      if (isSubmitting) {
+        btnSubmitLead.disabled = true;
+        btnSubmitLead.innerHTML = `<span class="spinner"></span>Saving…`;
+      } else {
+        // If already submitted, keep "Saved" state
+        if (btnSubmitLead.textContent.trim() === "Saved") return;
+        btnSubmitLead.disabled = false;
+        btnSubmitLead.textContent = "Save my results";
+      }
+    }
+
+    function setLeadSubmittedUI() {
+      btnSubmitLead.disabled = true;
+      btnSubmitLead.textContent = "Saved";
+    }
+
+    function isValidEmail(email) {
+      // Simple validation (good enough for most lead capture)
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[m]));
     }
   </script>
 </body>
