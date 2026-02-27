@@ -68,9 +68,8 @@
         <select id="ageGroup">
           <option value="">Select…</option>
           <option value="0_18">0–18 months</option>
-          <option value="18_36">18–36 months</option>
-          <option value="3_5">3–5 years</option>
-          <option value="6_10">6–10 years</option>
+          <option value="18_24">18–24 months</option>
+          <option value="24_36">24–36 months</option>
         </select>
       </div>
 
@@ -136,7 +135,7 @@
         { id: "mchat19", text: "If something new happens, does your child look at your face to see how you feel about it?", concernAnswer: "no" },
         { id: "mchat20", text: "Does your child like movement activities?", concernAnswer: "no" },
       ],
-      "18_36": [
+      "18_24": [
         { id: "mchat1", text: "If you point at something across the room, does your child look at it?", concernAnswer: "no" },
         { id: "mchat2", text: "Have you ever wondered if your child might be deaf?", concernAnswer: "yes" },
         { id: "mchat3", text: "Does your child play pretend or make-believe?", concernAnswer: "no" },
@@ -158,22 +157,27 @@
         { id: "mchat19", text: "If something new happens, does your child look at your face to see how you feel about it?", concernAnswer: "no" },
         { id: "mchat20", text: "Does your child like movement activities?", concernAnswer: "no" },
       ],
-      "3_5": [
-        { id: "back_and_forth", text: "Can your child have some back-and-forth interaction (gestures, words, play)?", concernAnswer: "no" },
-        { id: "peer_interest", text: "Does your child show interest in playing with other children?", concernAnswer: "no" },
-        { id: "language", text: "Does your child use language in a typical way for their age?", concernAnswer: "no" },
-        { id: "repetitive_play", text: "Does your child repeat the same play actions over and over (lining up, spinning)?", concernAnswer: "yes" },
-        { id: "big_feelings", text: "Do transitions frequently lead to big meltdowns?", concernAnswer: "yes" },
-        { id: "restricted_interests", text: "Does your child have intense interests that dominate play or conversation?", concernAnswer: "yes" },
-      ],
-      "6_10": [
-        { id: "friendships", text: "Does your child have difficulty making or keeping friendships?", concernAnswer: "yes" },
-        { id: "conversation", text: "Does your child struggle with typical back-and-forth conversation?", concernAnswer: "yes" },
-        { id: "social_cues", text: "Does your child often miss social cues (tone, facial expressions, sarcasm)?", concernAnswer: "yes" },
-        { id: "rigidity", text: "Does your child have strong rigidity about routines or rules?", concernAnswer: "yes" },
-        { id: "sensory", text: "Does your child have significant sensory sensitivities (sound, clothing, food)?", concernAnswer: "yes" },
-        { id: "repetitive", text: "Do you see repetitive movements or repetitive speech (repeating phrases or scripts)?", concernAnswer: "yes" },
-      ]
+      "24_36": [
+        { id: "mchat1", text: "If you point at something across the room, does your child look at it?", concernAnswer: "no" },
+        { id: "mchat2", text: "Have you ever wondered if your child might be deaf?", concernAnswer: "yes" },
+        { id: "mchat3", text: "Does your child play pretend or make-believe?", concernAnswer: "no" },
+        { id: "mchat4", text: "Does your child like climbing on things?", concernAnswer: "no" },
+        { id: "mchat5", text: "Does your child make unusual finger movements near his or her eyes?", concernAnswer: "yes" },
+        { id: "mchat6", text: "Does your child point with one finger to ask for something or to get help?", concernAnswer: "no" },
+        { id: "mchat7", text: "Does your child point with one finger to show you something interesting?", concernAnswer: "no" },
+        { id: "mchat8", text: "Is your child interested in other children?", concernAnswer: "no" },
+        { id: "mchat9", text: "Does your child show you things by bringing them to you or holding them up for you to see – not to get help, but just to share?", concernAnswer: "no" },
+        { id: "mchat10", text: "Does your child respond when you call his or her name?", concernAnswer: "no" },
+        { id: "mchat11", text: "When you smile at your child, does he or she smile back at you?", concernAnswer: "no" },
+        { id: "mchat12", text: "Does your child get upset by everyday noises?", concernAnswer: "yes" },
+        { id: "mchat13", text: "Does your child walk?", concernAnswer: "no" },
+        { id: "mchat14", text: "Does your child look you in the eye when you are talking to him or her, playing with him or her, or dressing him or her?", concernAnswer: "no" },
+        { id: "mchat15", text: "Does your child try to copy what you do?", concernAnswer: "no" },
+        { id: "mchat16", text: "If you turn your head to look at something, does your child look around to see what you are looking at?", concernAnswer: "no" },
+        { id: "mchat17", text: "Does your child try to get you to watch him or her?", concernAnswer: "no" },
+        { id: "mchat18", text: "Does your child understand when you tell him or her to do something?", concernAnswer: "no" },
+        { id: "mchat19", text: "If something new happens, does your child look at your face to see how you feel about it?", concernAnswer: "no" },
+        { id: "mchat20", text: "Does your child like movement activities?", concernAnswer: "no" },
     };
 
     /**********************************************************************
@@ -189,9 +193,8 @@
     function friendlyAgeLabel(key) {
       switch (key) {
         case "0_18": return "0–18 months";
-        case "18_36": return "18–36 months";
-        case "3_5": return "3–5 years";
-        case "6_10": return "6–10 years";
+        case "18_24": return "18–24 months";
+        case "24_36": return "24–36 months";
         default: return key || "";
       }
     }
@@ -515,4 +518,5 @@
   </script>
 </body>
 </html>
+
 
