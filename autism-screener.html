@@ -87,7 +87,7 @@
         <p style="margin:0 0 8px;"><strong>Get your results + next steps by email</strong></p>
         <div class="row">
           <input type="email" id="email" placeholder="you@email.com" />
-          <button class="primary" id="btnSubmitLead" type="button">Save my results</button>
+          <button class="primary" id="btnSubmitLead" type="button">Submit</button>
         </div>
         <p class="muted" id="leadNote">We’ll save your email + screener summary so Sunpetal can follow up with helpful next steps.</p>
       </div>
@@ -176,8 +176,8 @@
      **********************************************************************/
     function interpretScore(score, total) {
       const pct = total ? (score / total) : 0;
-      if (pct <= 0.33) return "low";
-      if (pct <= 0.66) return "moderate";
+      if (pct <= 0.1) return "low";
+      if (pct <= 0.4) return "moderate";
       return "high";
     }
 
@@ -479,7 +479,7 @@
     function setLeadSubmitting(isSubmitting) {
       if (isSubmitting) {
         btnSubmitLead.disabled = true;
-        btnSubmitLead.innerHTML = `<span class="spinner"></span>Saving…`;
+        btnSubmitLead.innerHTML = `<span class="spinner"></span>Calculating…`;
       } else {
         // If already submitted, keep "Saved" state
         if (btnSubmitLead.textContent.trim() === "Saved") return;
@@ -510,6 +510,7 @@
   </script>
 </body>
 </html>
+
 
 
 
