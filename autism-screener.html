@@ -3,8 +3,6 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <div class="header">
-</div>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #fafafa; }
     .wrap { max-width: 820px; margin: 24px auto; padding: 16px; }
@@ -178,6 +176,7 @@
         { id: "mchat18", text: "Does your child understand when you tell him or her to do something?", concernAnswer: "no" },
         { id: "mchat19", text: "If something new happens, does your child look at your face to see how you feel about it?", concernAnswer: "no" },
         { id: "mchat20", text: "Does your child like movement activities?", concernAnswer: "no" },
+      ]
     };
 
     /**********************************************************************
@@ -292,7 +291,8 @@
 
       setLeadSubmitting(true);
 
-      const payload = { ...lastResult, email };
+      const zip = (document.getElementById("zip")?.value || "").trim();
+      const payload = { ...lastResult, email, zip };
 
       try {
         const res = await fetch(APPS_SCRIPT_ENDPOINT, {
@@ -518,5 +518,6 @@
   </script>
 </body>
 </html>
+
 
 
