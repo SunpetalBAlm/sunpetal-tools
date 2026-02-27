@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Autism Concern Quick Screener</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #fafafa; }
+    .wrap { max-width: 820px; margin: 24px auto; padding: 16px; }
+    .card { background: #fff; border: 1px solid #e6e6e6; border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    .sub { color: #444; margin: 0 0 14px; line-height: 1.35; }
+    .disclaimer { font-size: 13px; color: #555; background: #fff6d6; border: 1px solid #ffe29a; padding: 10px 12px; border-radius: 10px; margin: 12px 0 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    select, input[type="email"] { padding: 10px; border-radius: 10px; border: 1px solid #ccc; font-size: 16px; width: 320px; max-width: 100%; }
+    .q { border-top: 1px solid #eee; padding: 12px 0; }
+    .q:first-child { border-top: 0; }
+    .q-title { font-weight: 600; margin: 0 0 8px; }
+    .choices { display: flex; gap: 10px; flex-wrap: wrap; }
+    .choice {
+      border: 1px solid #d8d8d8; border-radius: 999px; padding: 10px 12px;
+      cursor: pointer; user-select: none; background: #fff;
+    }
+    .choice input { margin-right: 6px; }
+    .btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    button {
+      padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer;
+      font-size: 16px;
+    }
+    .primary { background: #111; color: #fff; }
+    .ghost { background: #f1f1f1; }
+    .hidden { display: none; }
+    .result {
+      margin-top: 16px; padding: 14px; border-radius: 12px; border: 1px solid #e6e6e6;
+      background: #f7f7f7;
+    }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; background: #eaeaea; }
+    .result h2 { margin: 8px 0 8px; font-size: 18px; }
+    .next { margin: 0; line-height: 1.45; }
+    .small { font-size: 13px; color: #555; margin-top: 10px; }
+    .error { color: #b00020; margin-top: 10px; font-size: 14px; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Autism Concern Quick Screener</h1>
+      <p class="sub">A short educational screener to help you decide what next step may be helpful.</p>
+
+      <div class="disclaimer">
+        This tool is for educational purposes only and is not a diagnosis. If you have concerns about your child’s development, consult a qualified professional.
+      </div>
+
+      <div class="row">
+        <label for="ageGroup"><strong>Child age group:</strong></label>
+        <select id="ageGroup">
+          <option value="">Select…</option>
+          <option value="0_18">0–18 months</option>
+          <option value="18_36">18–36 months</option>
+          <option value="3_5">3–5 years</option>
+          <option value="6_10">6–10 years</option>
+        </select>
+      </div>
+
+      <div id="questions" class="hidden" style="margin-top:14px;"></div>
+
+      <div class="btns hidden" id="actions">
+        <button class="primary" id="btnScore">See results</button>
+        <button class="ghost" id="btnReset" type="button">Reset</button>
+      </div>
+
+      <div id="err" class="error hidden"></div>
+
+      <div id="result" class="result hidden" aria-live="polite"></div>
+
+      <div id="leadCapture" class="hidden" style="margin-top:14px;">
+        <p style="margin:0 0 8px;"><strong>Optional:</strong> Get a copy of your results + next steps by email.</p>
+        <div class="row">
+          <input type="email" id="email" placeholder="you@email.com" />
+          <button class="ghost" id="btnEmail" type="button">Send me my results</button>
+        </div>
+        <p class="small">
+          (This demo stores nothing. You’ll connect this to your form/CRM in the next step.)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Each question has:
+    // - id: used as key in answers
+    // - text: display
+    // - concernAnswer: which choice counts as a concern (adds 1 point)
+    // Keep these as "yes" or "no" to make scoring easy.
+    const QUESTION_BANK = {
+      "0_18": [
+        { id: "name_response", text: "Does your child respond to their name most of the time?", concernAnswer: "no" },
+        { id: "eye_contact", text: "Does your child make eye contact during play or feeding?", concernAnswer: "no" },
+        { id: "smile_back", text: "Does your child smile back when you smile at them?", concernAnswer: "no" },
+        { id: "babbling", text: "Is your child babbling or making varied sounds?", concernAnswer: "no" },
+        { id: "shared_attention", text: "Does your child look where you point or look?", concernAnswer: "no" },
+        { id: "repetitive", text: "Do you often notice repetitive movements (like hand flapping or rocking)?", concernAnswer: "yes" },
+      ],
+      "18_36": [
+        { id: "pointing", text: "Does your child point to show you something interesting (not just to get it)?", concernAnswer: "no" },
+        { id: "words", text: "Does your child use words or short phrases to communicate needs/wants?", concernAnswer: "no" },
+        { id: "pretend_play", text: "Does your child engage in pretend play (feeding a doll, talking on toy phone)?", concernAnswer: "no" },
+        { id: "name_response", text: "Does your child respond to their name most of the time?", concernAnswer: "no" },
+        { id: "routine_upset", text: "Does your child get very upset with small changes in routine?", concernAnswer: "yes" },
+        { id: "sensory", text: "Does your child strongly over-react to sounds, textures, or lights?", concernAnswer: "yes" },
+      ],
+      "3_5": [
+        { id: "back_and_forth", text: "Can your child have some back-and-forth interaction (gestures, words, play)?", concernAnswer: "no" },
+        { id: "peer_interest", text: "Does your child show interest in playing with other children?", concernAnswer: "no" },
+        { id: "language", text: "Does your child use language in a typical way for their age?", concernAnswer: "no" },
+        { id: "repetitive_play", text: "Does your child repeat the same play actions over and over (lining up, spinning)?", concernAnswer: "yes" },
+        { id: "big_feelings", text: "Do transitions frequently lead to big meltdowns?", concernAnswer: "yes" },
+        { id: "restricted_interests", text: "Does your child have intense interests that dominate play or conversation?", concernAnswer: "yes" },
+      ],
+      "6_10": [
+        { id: "friendships", text: "Does your child have difficulty making or keeping friendships?", concernAnswer: "yes" },
+        { id: "conversation", text: "Does your child struggle with typical back-and-forth conversation?", concernAnswer: "yes" },
+        { id: "social_cues", text: "Does your child often miss social cues (tone, facial expressions, sarcasm)?", concernAnswer: "yes" },
+        { id: "rigidity", text: "Does your child have strong rigidity about routines or rules?", concernAnswer: "yes" },
+        { id: "sensory", text: "Does your child have significant sensory sensitivities (sound, clothing, food)?", concernAnswer: "yes" },
+        { id: "repetitive", text: "Do you see repetitive movements or repetitive speech (echolalia/phrases)?", concernAnswer: "yes" },
+      ]
+    };
+
+    // Result thresholds (tune these later)
+    function interpretScore(score, total) {
+      // Simple: 0-2 low, 3-4 moderate, 5+ high (for 6 questions)
+      // If you change question counts, this scales with %.
+      const pct = total ? (score / total) : 0;
+      if (pct <= 0.33) return "low";
+      if (pct <= 0.66) return "moderate";
+      return "high";
+    }
+
+    const ageGroupEl = document.getElementById("ageGroup");
+    const questionsEl = document.getElementById("questions");
+    const actionsEl = document.getElementById("actions");
+    const resultEl = document.getElementById("result");
+    const errEl = document.getElementById("err");
+    const leadEl = document.getElementById("leadCapture");
+
+    let currentQuestions = [];
+    let answers = {}; // {questionId: "yes"|"no"}
+
+    ageGroupEl.addEventListener("change", () => {
+      const key = ageGroupEl.value;
+      resetUI(false);
+
+      if (!key || !QUESTION_BANK[key]) return;
+
+      currentQuestions = QUESTION_BANK[key];
+      answers = {};
+      renderQuestions(currentQuestions);
+      questionsEl.classList.remove("hidden");
+      actionsEl.classList.remove("hidden");
+    });
+
+    document.getElementById("btnReset").addEventListener("click", () => {
+      ageGroupEl.value = "";
+      resetUI(true);
+    });
+
+    document.getElementById("btnScore").addEventListener("click", () => {
+      errEl.classList.add("hidden");
+      errEl.textContent = "";
+
+      // Validate all answered
+      const missing = currentQuestions.filter(q => !answers[q.id]);
+      if (missing.length) {
+        errEl.textContent = "Please answer every question to see results.";
+        errEl.classList.remove("hidden");
+        return;
+      }
+
+      const { score, total } = computeScore(currentQuestions, answers);
+      const bucket = interpretScore(score, total);
+      showResult(bucket, score, total);
+      leadEl.classList.remove("hidden");
+    });
+
+    document.getElementById("btnEmail").addEventListener("click", () => {
+      const email = document.getElementById("email").value.trim();
+      if (!email) {
+        alert("Enter an email address.");
+        return;
+      }
+      // Placeholder: connect to your backend, Mailchimp, HubSpot, etc.
+      // For now just show what you would send.
+      alert("Demo: would send results to " + email);
+    });
+
+    function renderQuestions(list) {
+      questionsEl.innerHTML = "";
+      list.forEach((q, idx) => {
+        const div = document.createElement("div");
+        div.className = "q";
+
+        const title = document.createElement("p");
+        title.className = "q-title";
+        title.textContent = (idx + 1) + ". " + q.text;
+
+        const choices = document.createElement("div");
+        choices.className = "choices";
+
+        // Yes option
+        choices.appendChild(makeChoice(q.id, "yes", "Yes"));
+        // No option
+        choices.appendChild(makeChoice(q.id, "no", "No"));
+
+        div.appendChild(title);
+        div.appendChild(choices);
+        questionsEl.appendChild(div);
+      });
+    }
+
+    function makeChoice(qid, value, label) {
+      const wrap = document.createElement("label");
+      wrap.className = "choice";
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = qid;
+      input.value = value;
+      input.addEventListener("change", (e) => {
+        answers[qid] = e.target.value;
+      });
+
+      wrap.appendChild(input);
+      wrap.appendChild(document.createTextNode(label));
+      return wrap;
+    }
+
+    function computeScore(qs, ans) {
+      let score = 0;
+      qs.forEach(q => {
+        if (ans[q.id] === q.concernAnswer) score += 1;
+      });
+      return { score, total: qs.length };
+    }
+
+    function showResult(bucket, score, total) {
+      const badgeText = bucket === "low" ? "Low concern"
+                      : bucket === "moderate" ? "Moderate concern"
+                      : "Higher concern";
+
+      const headline = bucket === "low"
+        ? "Your responses suggest low concern based on this brief screener."
+        : bucket === "moderate"
+          ? "Your responses suggest some areas worth monitoring or discussing."
+          : "Your responses suggest it may be helpful to talk with a professional soon.";
+
+      // Replace these with Sunpetal links (Bookings, intake page, phone)
+      const nextSteps = bucket === "low"
+        ? `Consider tracking development over time. If concerns grow, talk with your pediatrician or a specialist.`
+        : bucket === "moderate"
+          ? `Consider a professional screening or consultation. Early support can make a big difference.`
+          : `Consider scheduling a developmental evaluation or speaking with a qualified clinician.`;
+
+      const cta = bucket === "high"
+        ? `<p class="next"><strong>Next step:</strong> <a href="/contact">Request an evaluation or call Sunpetal</a>.</p>`
+        : `<p class="next"><strong>Next step:</strong> <a href="/contact">Ask a question or request next steps</a>.</p>`;
+
+      resultEl.innerHTML = `
+        <span class="badge">${badgeText}</span>
+        <h2>${headline}</h2>
+        <p class="next">${nextSteps}</p>
+        <p class="small">Score: ${score} / ${total} (for your reference)</p>
+        ${cta}
+        <p class="small">Reminder: This is not a diagnosis.</p>
+      `;
+      resultEl.classList.remove("hidden");
+      resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function resetUI(full) {
+      currentQuestions = [];
+      answers = {};
+      questionsEl.innerHTML = "";
+      questionsEl.classList.add("hidden");
+      actionsEl.classList.add("hidden");
+      resultEl.classList.add("hidden");
+      resultEl.innerHTML = "";
+      leadEl.classList.add("hidden");
+      document.getElementById("email").value = "";
+      errEl.classList.add("hidden");
+      errEl.textContent = "";
+      if (full) window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  </script>
+</body>
+</html>
